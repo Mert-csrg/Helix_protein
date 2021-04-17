@@ -1,0 +1,41 @@
+
+
+gmx pdb2gmx -f helix_protein.pdb -o helix_protein.gro
+
+
+gmx editconf -f helix_protein.gro -o helix_box.gro -c -d 0.5 -bt cubic
+
+
+gmx solvate -cp helix_box.gro -cs spc216.gro -o helix_solv.gro -p topol.top
+
+
+gmx grompp -f ions.mdp -c helix_solv.gro -p topol.top -o ions.tpr
+gmx genion -s ions.tpr -o helix_solv_ions.gro -p topol.top -pname NA -nname CL -neutral
+
+
+gmx grompp -f minim.mdp -c helix_solv_ions.gro -p topol.top -o em.tpr
+gmx mdrun -v -deffnm em
+gmx energy -f em.edr -o potential.xvg
+
+
+gmx grompp -f nvt.mdp -c em.gro -r em.gro -p topol.top -o nvt.tpr
+gmx mdrun -deffnm nvt -v
+gmx energy -f nvt.edr -o temperature.xvg
+
+
+gmx grompp -f npt.mdp -c nvt.gro -r nvt.gro -t nvt.cpt -p topol.top -o npt.tpr
+gmx mdrun -deffnm npt -v
+gmx energy -f npt.edr -o pressure.xvg
+gmx energy -f npt.edr -o density.xvg
+
+gmx grompp -f md.mdp -c npt.gro -t npt.cpt -p topol.top -o md_0_1.tpr
+gmx mdrun -deffnm md_0_1 -v
+
+
+gmx trjconv -f md_0_1.xtc -pbc mol -center -s md_0_1.tpr -o md_0_1_centered.xtc
+
+
+gmx rms -s md_0_1.tpr -f md_0_1_centered.xtc -o rmsd.xvg -tu ns
+gmx rms -s em.tpr -f md_0_1_centered.xtc -o rmsd_xtal.xvg -tu ns
+
+gmx gyrate -f md_0_1.xtc -s md_0_1.tpr -o rgyrate.xvg
